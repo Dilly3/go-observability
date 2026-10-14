@@ -50,6 +50,10 @@ func main() {
 	})
 
 	router.GET("/readyz", handler.ReadinessHandler(pool, logger))
+	store := datastore.NewStore(pool)
+	handler := handler.NewHandler(store, logger)
+
+	router.POST("/wallets", handler.CreateWallet)
 
 	server := &http.Server{
 		Addr:              ":8080",

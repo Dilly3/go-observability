@@ -37,3 +37,15 @@ func OpenDb(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 
 	return pool, nil
 }
+
+type Store struct {
+	pool *pgxpool.Pool
+}
+
+func NewStore(pool *pgxpool.Pool) *Store {
+	return &Store{pool: pool}
+}
+
+func (st *Store) GetWalletStore() *WalletStore {
+	return &WalletStore{pool: st.pool}
+}

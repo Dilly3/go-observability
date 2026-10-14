@@ -6,9 +6,19 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dilly3/go-observability/datastore"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type Handler struct {
+	store  *datastore.Store
+	logger *slog.Logger
+}
+
+func NewHandler(store *datastore.Store, logger *slog.Logger) Handler {
+	return Handler{store: store, logger: logger}
+}
 
 func ReadinessHandler(pool *pgxpool.Pool, logger *slog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
