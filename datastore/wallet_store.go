@@ -69,3 +69,57 @@ func (s *WalletStore) Create(ctx context.Context, ownerName string) (models.Wall
 
 	return wallet, nil
 }
+
+func (s *WalletStore) Get(ctx context.Context, walletID string) (models.WalletDetails, error) {
+	var result models.WalletDetails
+	var currency string
+	var accountID *string
+
+	err := s.pool.QueryRow(ctx, `
+		SELECT
+			w.id::text,
+			w.owner_name,
+			w.currency,
+			w.created_at,
+			a.id::text,
+			COALESCE(
+				SUM(
+					CASE
+						WHEN e.direction = 'credit' THEN e.amount_kobo
+						WHEN e.direction = 'debit' THEN -e.amount_kobo
+						ELSE 0
+					END
+				),
+				0
+			)::bigint AS balance_kobo
+		FROM wallets AS w
+		LEFT JOIN accounts AS a
+			ON a.wallet_id = w.id
+			AND a.account_type = 'liability'
+		LEFT JOIN ledger_entries AS e
+			ON e.account_id = a.id
+		WHERE w.id = $1::uuid
+		GROUP BY w.id, a.id
+	`, walletID).Scan(
+		&result.ID,
+		&result.OwnerName,
+		&currency,
+		&result.CreatedAt,
+		&accountID,
+		&result.BalanceKobo,
+	)
+	if err != nil {
+		return models.WalletDetails{}, fmt.Errorf("get wallet: %w", err)
+	}
+
+	if accountID == nil {
+		return models.WalletDetails{}, fmt.Errorf(
+			"wallet %s has no liability account",
+			walletID,
+		)
+	}
+
+	result.Currency = models.Currency(currency)
+
+	return result, nil
+}

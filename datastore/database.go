@@ -46,6 +46,6 @@ func NewStore(pool *pgxpool.Pool) *Store {
 	return &Store{pool: pool}
 }
 
-func (st *Store) GetWalletStore() *WalletStore {
+func (st *Store) WalletStore() *WalletStore {
 	return &WalletStore{pool: st.pool}
 }

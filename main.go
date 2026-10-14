@@ -54,6 +54,7 @@ func main() {
 	handler := handler.NewHandler(store, logger)
 
 	router.POST("/wallets", handler.CreateWallet)
+	router.GET("/wallets/:id", handler.GetWallet)
 
 	server := &http.Server{
 		Addr:              ":8080",

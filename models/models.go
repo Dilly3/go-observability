@@ -55,3 +55,9 @@ type LedgerEntry struct {
 	AmountKobo           int64          `json:"amount_kobo"`
 	CreatedAt            time.Time      `json:"created_at"`
 }
+
+// WalletDetails includes a calculated balance, not a stored balance column.
+type WalletDetails struct {
+	Wallet
+	BalanceKobo int64 `json:"balance_kobo"`
+}

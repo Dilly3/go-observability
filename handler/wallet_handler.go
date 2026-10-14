@@ -3,13 +3,16 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 )
 
 func (h *Handler) CreateWallet(c *gin.Context) {
@@ -50,7 +53,7 @@ func (h *Handler) CreateWallet(c *gin.Context) {
 	defer cancel()
 
 	start := time.Now()
-	wallet, err := h.store.GetWalletStore().Create(ctx, input.OwnerName)
+	wallet, err := h.store.WalletStore().Create(ctx, input.OwnerName)
 
 	if err != nil {
 		h.logger.Error("wallet creation failed",
@@ -71,4 +74,48 @@ func (h *Handler) CreateWallet(c *gin.Context) {
 
 	c.Header("Location", "/wallets/"+wallet.ID)
 	c.JSON(http.StatusCreated, wallet)
+}
+
+// Accept the canonical UUID representation used by our API.
+var walletIDPattern = regexp.MustCompile(
+	`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`,
+)
+
+func (h *Handler) GetWallet(c *gin.Context) {
+	walletID := c.Param("id")
+
+	if !walletIDPattern.MatchString(walletID) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "wallet id must be a UUID",
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	wallet, err := h.store.WalletStore().Get(ctx, walletID)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "wallet not found",
+		})
+		return
+	}
+
+	if err != nil {
+		h.logger.Error("wallet retrieval failed",
+			"wallet_id", walletID,
+			"error", err,
+			"duration_seconds", time.Since(start).Seconds(),
+		)
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "unable to retrieve wallet",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, wallet)
 }
