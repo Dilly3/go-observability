@@ -11,6 +11,7 @@ import (
 	"github.com/dilly3/go-observability/datastore"
 	"github.com/dilly3/go-observability/handler"
 	"github.com/dilly3/go-observability/middleware"
+	"github.com/dilly3/go-observability/monitoring"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -36,11 +37,12 @@ func main() {
 	defer pool.Close()
 
 	logger.Info("database connected", "max_connections", pool.Config().MaxConns)
-
+	metrics := monitoring.NewMetrics()
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.Use(metrics.Middleware())
 	router.Use(middleware.RequestLogger(logger))
-
+	router.GET("/metrics", gin.WrapH(metrics.Handler()))
 	router.GET("/healthz", func(c *gin.Context) {
 
 		c.JSON(http.StatusOK, gin.H{
